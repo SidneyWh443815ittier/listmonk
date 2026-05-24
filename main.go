@@ -77,7 +77,8 @@ func main() {
 	for _, c := range cfgFiles {
 		if err := ko.Load(file.Provider(c), toml.Parser()); err != nil {
 			if os.IsNotExist(err) {
-				l.Printf("config file not found: %s", c)
+				// Warn but continue — missing optional config files are non-fatal.
+				l.Printf("warning: config file not found, skipping: %s", c)
 				continue
 			}
 			l.Fatalf("error loading config from file: %v", err)
@@ -111,12 +112,4 @@ func main() {
 	}
 }
 
-// generateNewConfig writes a sample config file to disk.
-func generateNewConfig() error {
-	sample := `# listmonk configuration
-# See https://listmonk.app/docs/configuration for documentation.
-
-[app]
-address = "0.0.0.0:9000"
-admin_username = "listmonk"
-admin_pa
+// generateNewConfig writes a sample confi
