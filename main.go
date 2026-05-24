@@ -45,6 +45,7 @@ func main() {
 		f.PrintDefaults()
 	}
 
+	// Default to config.toml in the current directory, but also check ~/.listmonk/config.toml
 	f.StringSlice("config", []string{"config.toml"},
 		"path to one or more config files (will be merged in order)")
 	f.Bool("install", false, "run first-time installation wizard")
@@ -84,6 +85,8 @@ func main() {
 	}
 
 	// Load environment variables (LISTMONK_ prefix).
+	// Double underscores (__) are used as a delimiter for nested keys, e.g.
+	// LISTMONK_DB__HOST maps to db.host in the config.
 	if err := ko.Load(env.Provider("LISTMONK_", ".", func(s string) string {
 		return strings.Replace(strings.ToLower(
 			strings.TrimPrefix(s, "LISTMONK_")), "__", ".", -1)
@@ -116,18 +119,4 @@ func generateNewConfig() error {
 [app]
 address = "0.0.0.0:9000"
 admin_username = "listmonk"
-admin_password = "listmonk"
-
-[db]
-host = "localhost"
-port = 5432
-user = "listmonk"
-password = "listmonk"
-database = "listmonk"
-ssl_mode = "disable"
-max_open = 25
-max_idle = 25
-max_lifetime = "300s"
-`
-	return os.WriteFile("config.toml.sample", []byte(sample), 0644)
-}
+admin_pa
