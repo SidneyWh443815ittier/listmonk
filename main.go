@@ -1,0 +1,133 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+	"strings"
+
+	"github.com/knadh/koanf/parsers/toml"
+	"github.com/knadh/koanf/providers/env"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/providers/posflag"
+	"github.com/knadh/koanf/v2"
+	"github.com/knadh/stuffbin"
+	flag "github.com/spf13/pflag"
+)
+
+const (
+	appName    = "listmonk"
+	appVersion = "dev"
+)
+
+// App is the global application state container.
+type App struct {
+	log    *log.Logger
+	ko     *koanf.Koanf
+	fs     stuffbin.FileSystem
+}
+
+var (
+	// Injected at build time via ldflags.
+	buildString = "unknown"
+)
+
+func main() {
+	var (
+		ko = koanf.New(".")
+		l  = log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lshortfile)
+	)
+
+	// Define CLI flags.
+	f := flag.NewFlagSet("config", flag.ContinueOnError)
+	f.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n", appName)
+		f.PrintDefaults()
+	}
+
+	f.StringSlice("config", []string{"config.toml"},
+		"path to one or more config files (will be merged in order)")
+	f.Bool("install", false, "run first-time installation wizard")
+	f.Bool("upgrade", false, "upgrade database to the latest schema")
+	f.Bool("yes", false, "assume 'yes' to prompts during install/upgrade")
+	f.Bool("version", false, "show current version of the build")
+	f.Bool("new-config", false, "generate a new sample config.toml file")
+
+	if err := f.Parse(os.Args[1:]); err != nil {
+		l.Fatalf("error parsing flags: %v", err)
+	}
+
+	// Display version and exit.
+	if ok, _ := f.GetBool("version"); ok {
+		fmt.Printf("%s version %s | build: %s\n", appName, appVersion, buildString)
+		os.Exit(0)
+	}
+
+	// Generate a new config file and exit.
+	if ok, _ := f.GetBool("new-config"); ok {
+		if err := generateNewConfig(); err != nil {
+			l.Fatalf("error generating config: %v", err)
+		}
+		os.Exit(0)
+	}
+
+	// Load config files.
+	cfgFiles, _ := f.GetStringSlice("config")
+	for _, c := range cfgFiles {
+		if err := ko.Load(file.Provider(c), toml.Parser()); err != nil {
+			if os.IsNotExist(err) {
+				l.Printf("config file not found: %s", c)
+				continue
+			}
+			l.Fatalf("error loading config from file: %v", err)
+		}
+	}
+
+	// Load environment variables (LISTMONK_ prefix).
+	if err := ko.Load(env.Provider("LISTMONK_", ".", func(s string) string {
+		return strings.Replace(strings.ToLower(
+			strings.TrimPrefix(s, "LISTMONK_")), "__", ".", -1)
+	}), nil); err != nil {
+		l.Fatalf("error loading config from env: %v", err)
+	}
+
+	// Override config with CLI flags.
+	if err := ko.Load(posflag.Provider(f, ".", ko), nil); err != nil {
+		l.Fatalf("error loading config from flags: %v", err)
+	}
+
+	// Initialize the app.
+	app := &App{
+		log: l,
+		ko:  ko,
+	}
+
+	// Run the server.
+	if err := initServer(app); err != nil {
+		l.Fatalf("error starting server: %v", err)
+	}
+}
+
+// generateNewConfig writes a sample config file to disk.
+func generateNewConfig() error {
+	sample := `# listmonk configuration
+# See https://listmonk.app/docs/configuration for documentation.
+
+[app]
+address = "0.0.0.0:9000"
+admin_username = "listmonk"
+admin_password = "listmonk"
+
+[db]
+host = "localhost"
+port = 5432
+user = "listmonk"
+password = "listmonk"
+database = "listmonk"
+ssl_mode = "disable"
+max_open = 25
+max_idle = 25
+max_lifetime = "300s"
+`
+	return os.WriteFile("config.toml.sample", []byte(sample), 0644)
+}
