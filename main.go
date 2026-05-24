@@ -54,6 +54,9 @@ func main() {
 	f.Bool("yes", false, "assume 'yes' to prompts during install/upgrade")
 	f.Bool("version", false, "show current version of the build")
 	f.Bool("new-config", false, "generate a new sample config.toml file")
+	// Personal addition: --dry-run flag to validate config and exit without starting the server.
+	// Useful for checking config changes before restarting the service.
+	f.Bool("dry-run", false, "validate configuration and exit without starting the server")
 
 	if err := f.Parse(os.Args[1:]); err != nil {
 		l.Fatalf("error parsing flags: %v", err)
@@ -98,15 +101,4 @@ func main() {
 
 	// Override config with CLI flags.
 	if err := ko.Load(posflag.Provider(f, ".", ko), nil); err != nil {
-		l.Fatalf("error loading config from flags: %v", err)
-	}
-
-	// Initialize the app.
-	app := &App{
-		log: l,
-		ko:  ko,
-	}
-
-	// Run the server.
-	if err := initServer(app); err != nil {
-		
+		l.Fatalf("error loading config from fla
