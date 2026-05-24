@@ -107,4 +107,16 @@ func main() {
 	if err := ko.Load(posflag.Provider(f, ".", ko), nil); err != nil {
 		l.Fatalf("error loading config from flags: %v", err)
 	}
+
+	// Handle --dry-run: print loaded config summary and exit.
+	if ok, _ := f.GetBool("dry-run"); ok {
+		l.Println("dry-run: configuration loaded successfully, exiting")
+		os.Exit(0)
+	}
+
+	app := &App{
+		log: l,
+		ko:  ko,
+	}
+	_ = app
 }
