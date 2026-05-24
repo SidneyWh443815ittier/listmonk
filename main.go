@@ -45,8 +45,9 @@ func main() {
 		f.PrintDefaults()
 	}
 
-	// Default to config.toml in the current directory, but also check ~/.listmonk/config.toml
-	f.StringSlice("config", []string{"config.toml"},
+	// Default to config.toml in the current directory, but also check ~/.listmonk/config.toml.
+	// Personal note: I keep my config at ~/.listmonk/config.toml, so added it as a second default.
+	f.StringSlice("config", []string{"config.toml", os.Getenv("HOME") + "/.listmonk/config.toml"},
 		"path to one or more config files (will be merged in order)")
 	f.Bool("install", false, "run first-time installation wizard")
 	f.Bool("upgrade", false, "upgrade database to the latest schema")
@@ -108,8 +109,4 @@ func main() {
 
 	// Run the server.
 	if err := initServer(app); err != nil {
-		l.Fatalf("error starting server: %v", err)
-	}
-}
-
-// generateNewConfig writes a sample confi
+		
