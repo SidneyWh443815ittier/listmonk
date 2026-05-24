@@ -87,6 +87,9 @@ func main() {
 			}
 			l.Fatalf("error loading config from file: %v", err)
 		}
+		// Personal note: log successful config loads so it's easy to confirm
+		// which files were actually picked up when debugging config issues.
+		l.Printf("loaded config file: %s", c)
 	}
 
 	// Load environment variables (LISTMONK_ prefix).
@@ -99,6 +102,18 @@ func main() {
 		l.Fatalf("error loading config from env: %v", err)
 	}
 
-	// Override config with CLI flags.
+	// Load flags into config.
 	if err := ko.Load(posflag.Provider(f, ".", ko), nil); err != nil {
-		l.Fatalf("error loading config from fla
+		l.Fatalf("error loading config from flags: %v", err)
+	}
+
+	app := &App{
+		log: l,
+		ko:  ko,
+	}
+	_ = app
+}
+
+func generateNewConfig() error {
+	return fmt.Errorf("not implemented")
+}
