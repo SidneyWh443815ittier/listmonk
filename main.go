@@ -95,8 +95,8 @@ func main() {
 	// Load environment variables (LISTMONK_ prefix).
 	// Double underscores (__) are used as a delimiter for nested keys, e.g.
 	// LISTMONK_db__host maps to db.host in the config.
-	// Personal note: single underscore after prefix is intentional — the env
-	// provider strips "LISTMONK_" and then splits on "__" for nesting.
+	// Personal note: single underscore after prefix is intentional — the prefix
+	// itself is stripped, and __ within the remainder becomes the key delimiter.
 	if err := ko.Load(env.Provider("LISTMONK_", ".", func(s string) string {
 		return strings.Replace(strings.ToLower(
 			strings.TrimPrefix(s, "LISTMONK_")), "__", ".", -1)
@@ -104,14 +104,8 @@ func main() {
 		l.Fatalf("error loading config from env: %v", err)
 	}
 
-	// Load flags into koanf.
+	// Load flags into config (overrides file and env values).
 	if err := ko.Load(posflag.Provider(f, ".", ko), nil); err != nil {
 		l.Fatalf("error loading config from flags: %v", err)
 	}
-
-	app := &App{
-		log: l,
-		ko:  ko,
-	}
-	_ = app
 }
